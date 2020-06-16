@@ -1,4 +1,5 @@
 import fs from 'fs';
+import os from 'os';
 
 var stat = fs.stat;
 
@@ -29,7 +30,14 @@ var copy = function( src, dst ){
     }
 
     if( st.isFile() ) {
-      let ext = src.split('\\').pop();
+      let ext = [];
+      if (os.type() == 'Windows_NT') {
+        ext = src.split('\\').pop();
+
+      } else if (os.type() == 'Darwin') {
+        ext = src.split('/').pop();
+      }
+
       fileCopy (src, dst + '/' + ext);
     } else {
       fs.readdir( src, function( err, paths ){
@@ -61,7 +69,7 @@ var copy = function( src, dst ){
 var exists = function( src, dst, succeseCb, errorCb){
   if(succeseCb || errorCb) {
     succeseCallBack = succeseCb;
-    errorCallBack = errorCb
+    errorCallBack = errorCb;
   }
   
   fs.exists( dst, function( exists ){

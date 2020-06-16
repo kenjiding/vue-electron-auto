@@ -1,53 +1,56 @@
 <template>
   <div class="home">
     <h3 style="text-align: center;margin-bottom: 50px;">文件拷贝</h3>
-    <el-row>
-      <el-col :span="10">
-        <p style="margin-top: 0;">
-          <strong>资源文件夹：</strong>
-          <input type="file" webkitdirectory id="source-folder" @change="folderChange" name="请选择资源文件夹" />
-        </p>
-        <p>
-          <strong>资源文件：</strong>
-          <input type="file" multiple id="source-file" @change="fileChange" name="请选择资源文件夹" />
-        </p>
+    <form id="formData">
+      <el-row>
+        <el-col :span="10">
+          <p style="margin-top: 0;">
+            <strong>资源文件夹：</strong>
+            <input type="file" webkitdirectory id="source-folder" @change="folderChange" name="请选择资源文件夹" />
+          </p>
+          <p>
+            <strong>资源文件：</strong>
+            <input type="file" multiple id="source-file" @change="fileChange" name="请选择资源文件夹" />
+          </p>
 
-        <div style="text-align: left;">
-          <h4 style="width: 110px;padding-left: 7px;">已选的文件:</h4>
-          <div class="dyolege">
-            <p
-              v-for="(item, index) in source"
-              :key="item.path"
-              >
-              <span :class="{'fileType': true, 'folder': item.type === 'folder'}">
-                {{ item.type === 'file' ? '文件' : '文件夹'}}
-              </span>
-              <span>{{ item.path }}</span>
-              <i class="el-icon-delete" @click="deleteSourceItem(index)"></i>
-            </p>
+          <div style="text-align: left;">
+            <h4 style="width: 110px;padding-left: 7px;">已选的文件:</h4>
+            <div class="dyolege">
+              <p
+                v-for="(item, index) in source"
+                :key="item.path"
+                >
+                <span :class="{'fileType': true, 'folder': item.type === 'folder'}">
+                  {{ item.type === 'file' ? '文件' : '文件夹'}}
+                </span>
+                <span>{{ item.path }}</span>
+                <i class="el-icon-delete" @click="deleteSourceItem(index)"></i>
+              </p>
+            </div>
           </div>
-        </div>
-      </el-col>
-      <el-col :span="14">
-        <strong>目标文件夹（可多选）：</strong>
-        <input type="file" webkitdirectory id="target" name="请选择目的文件夹" @change="targetChange"/>
-        <div style="text-align: left; padding-left: 33px;">
-          <h4 style="width: 110px;">已选的文件夹:</h4>
-          <div class="dyolege">
-            <p
-              v-for="(item, index) in targetPathList"
-              :key="item"
-              >
-              <span>{{ item }}</span>
-              <i class="el-icon-delete" @click="deleteItem(index)"></i>
-            </p>
+        </el-col>
+        <el-col :span="14">
+          <strong>目标文件夹（可多选）：</strong>
+          <input type="file" webkitdirectory id="target" name="请选择目的文件夹" @change="targetChange"/>
+          <div style="text-align: left; padding-left: 33px;">
+            <h4 style="width: 110px;">已选的文件夹:</h4>
+            <div class="dyolege">
+              <p
+                v-for="(item, index) in targetPathList"
+                :key="item"
+                >
+                <span>{{ item }}</span>
+                <i class="el-icon-delete" @click="deleteItem(index)"></i>
+              </p>
+            </div>
           </div>
-        </div>
 
-      </el-col>
-    </el-row>
+        </el-col>
+      </el-row>
+    </form>
     
     <el-button type="primary" @click="start">开始拷贝</el-button>
+    <el-button type="primary" @click="reset">重置选中的文件</el-button>
 
     <div>
       <p
@@ -86,6 +89,13 @@ export default {
   mounted() {
   },
   methods: {
+    reset() {
+      document.getElementById('formData').reset();
+      this.source = [];
+      this.targetPathList = [];
+      this.copyOverPathList = [];
+      this.copyErrorPathList = [];
+    },
     deleteItem(index) {
       this.targetPathList.splice(index, 1);
     },
@@ -111,7 +121,7 @@ export default {
     fileChange() {
       let sourceFile = document.getElementById('source-file').files;
       if(!sourceFile) return;
-      sourceFile.forEach(item => {
+      Array.from(sourceFile).forEach(item => {
         this.source.push({
           type: 'file',
           path: item.path,
