@@ -1,44 +1,60 @@
-const { type } = require('os');
+import fs from 'fs';
 
-var fs = require( 'fs' ), stat = fs.stat;
+var stat = fs.stat;
 
 let succeseCallBack = null;
 let errorCallBack = null;
 
+var fileCopy = function (_src, _dst) {
+  let readable, writable;
+  
+  readable = fs.createReadStream( _src );
+  writable = fs.createWriteStream( _dst ); 
+  
+  writable.on('close', function () {
+    succeseCallBack && succeseCallBack({_src, _dst});
+  });
+  
+  writable.on('error', function (err) {
+    errorCallBack && errorCallBack({_src, _dst});
+  });
+
+  readable.pipe( writable );
+}
+
 var copy = function( src, dst ){
-  fs.readdir( src, function( err, paths ){
+  stat( src, function( err, st ){
     if( err ){
       throw err;
     }
-    paths.forEach(function( path ){
-      var _src = src + '/' + path,
-        _dst = dst + '/' + path,
-        readable, writable;
 
-      stat( _src, function( err, st ){
+    if( st.isFile() ) {
+      let ext = src.split('\\').pop();
+      fileCopy (src, dst + '/' + ext);
+    } else {
+      fs.readdir( src, function( err, paths ){
         if( err ){
           throw err;
         }
-
-        if( st.isFile() ){
-          readable = fs.createReadStream( _src );
-          writable = fs.createWriteStream( _dst ); 
-          
-          writable.on('close', function () {
-            succeseCallBack && succeseCallBack({_src, _dst});
+        paths.forEach(function( path ){
+          var _src = src + '/' + path,
+            _dst = dst + '/' + path;
+    
+          stat( _src, function( err, st ){
+            if( err ){
+              throw err;
+            }
+    
+            if( st.isFile() ){
+              fileCopy(_src, _dst);
+            } else if( st.isDirectory() ){
+              exists( _src, _dst );
+            }
           });
-          
-          writable.on('error', function () {
-            errorCallBack && errorCallBack({_src, _dst});
-          });
-
-          readable.pipe( writable );
-        } else if( st.isDirectory() ){
-          exists( _src, _dst );
-        }
+        });
       });
-    });
-  });
+    }
+  })
 };
 
 // 在复制目录前需要判断该目录是否存在，不存在需要先创建目录
@@ -60,4 +76,4 @@ var exists = function( src, dst, succeseCb, errorCb){
   });
 };
 
-module.exports = exists;
+export default exists;
