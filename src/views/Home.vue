@@ -14,7 +14,7 @@
           </p>
 
           <div style="text-align: left;">
-            <h4 style="width: 110px;padding-left: 7px;">已选的文件:</h4>
+            <h4 style="padding-left: 7px;">已选的文件:{{ sourceSize }} 个</h4>
             <div class="dyolege">
               <p
                 v-for="(item, index) in source"
@@ -37,9 +37,10 @@
             <div class="dyolege">
               <p
                 v-for="(item, index) in targetPathList"
-                :key="item"
+                :key="item.path"
                 >
-                <span>{{ item }}</span>
+                <span>{{ item.path }}</span>
+                <el-progress style="width: 200px;display: inline-block;margin: 0 10px;" :text-inside="true" :stroke-width="26" :percentage="item.progress"></el-progress>
                 <i class="el-icon-delete" @click="deleteItem(index)"></i>
               </p>
             </div>
@@ -54,15 +55,9 @@
 
     <div>
       <p
-        v-for="(item, index) in copyOverPathList"
-        :key="index">
-        文件： <span style="color: green;">{{ item.copuOverPath }} （拷贝成功）</span>
-      </p>
-
-      <p
         v-for="(item, index) in copyErrorPathList"
         :key="index">
-        文件： <span style="color: red;">{{ item.copuOverPath }} （拷贝出错）</span>
+        文件： <span style="color: red;">{{ item.copuOverPath }} （拷贝失败）</span>
       </p>
     </div>
   </div>
@@ -72,6 +67,7 @@
 // @ is an alias to /src
 import HelloWorld from '@/components/HelloWorld.vue'
 import copyFile from './copy.js';
+import countSize from './count.js';
 
 export default {
   name: 'Home',
@@ -82,18 +78,15 @@ export default {
     return {
       source: [],
       targetPathList: [],
-      copyOverPathList: [],
       copyErrorPathList: [],
+      sourceSize: 0,
     }
-  },
-  mounted() {
   },
   methods: {
     reset() {
       document.getElementById('formData').reset();
       this.source = [];
       this.targetPathList = [];
-      this.copyOverPathList = [];
       this.copyErrorPathList = [];
     },
     deleteItem(index) {
@@ -103,8 +96,11 @@ export default {
       this.source.splice(index, 1);
     },
     targetChange() {
-      let targetPathList = document.getElementById('target').files[0];
-      this.targetPathList.push(targetPathList.path);
+      let targetPath = document.getElementById('target').files[0];
+      this.targetPathList.push({
+        path: targetPath.path,
+        progress: 0,
+      });
       let list = new Set(this.targetPathList);
       this.targetPathList = [...list];
     },
@@ -131,9 +127,8 @@ export default {
       let list = new Set(this.source);
       this.source = [...list];
     },
-    start() {
+    async start() {
       let self = this;
-
       if(this.targetPathList.length <= 0) {
         return this.$message.error('你还未选择资源文件夹');
       }
@@ -141,26 +136,39 @@ export default {
       if(this.targetPathList.length <= 0) {
         return this.$message.error('你还未选择目标文件夹');
       }
+      
+      this.sourceSize = countSize(this.source).staticFileCount;
+      let startTime = +new Date();
 
-      this.source.forEach(ele => {
-        this.targetPathList.forEach(item => {
-          copyFile(
-            ele.path,
-            item,
-            function ({_src, _dst}) {
-              self.copyOverPathList.push({sourcePath: splicePath(_src), copuOverPath: splicePath(_dst)});
-            },
-            function ({_src, _dst}) {
-              self.copyErrorPathList.push({sourcePath: splicePath(_src), copuOverPath: splicePath(_dst)});
-            },
-          );
-        });
-      });
+      for(let i = 0; i < this.targetPathList.length; i++) {
+        await self.copyFileHandler(this.targetPathList[i]);
+      }
 
+      console.log('用时：', +new Date() - startTime)
+
+      // this.targetPathList.forEach(async item => {
+      //     console.log(1111);
+      //     await self.copyFileHandler(item);
+      // });
 
       function splicePath(path) {
         return path.split('/')[1];
       }
+    },
+    copyFileHandler(item) {
+      let self = this;
+      return new Promise((resolve, reject) => {
+        copyFile(
+          this.source,
+          item.path,
+          0,
+          (progress) => {
+            item.progress = (progress / self.sourceSize).toFixed(1) * 100;
+            if(progress === self.sourceSize) resolve();
+          },
+          reject,
+        );
+      });
     }
   },
 }
@@ -168,7 +176,7 @@ export default {
 
 <style lang='scss' scoped>
 .home {
-  width: 850px;
+  width: 900px;
   margin: 0 auto;
 }
 
@@ -192,7 +200,6 @@ export default {
   margin-top: 25px;
 
   /deep/ .el-icon-delete {
-    margin-left: 10px;
     cursor: pointer;
     font-size: 18px;
     color: red;
