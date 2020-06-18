@@ -16,6 +16,7 @@
     "@form-create/element-ui": "^1.0.14",
     "core-js": "^3.6.4",
     "element-ui": "^2.13.2",
+    "node-cmd": "^3.0.0",
     "vue": "^2.6.11",
     "vue-router": "^3.1.5",
     "vuex": "^3.1.2"

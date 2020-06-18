@@ -12,10 +12,15 @@ function geFileList(path) {
     let countSize = 0;
     let countFiles = 0;
     
-    let fileSt = fs.statSync( path);
+    let fileSt = fs.statSync(path);
     if( fileSt.isFile() ) {
       countFiles++;
       countSize += fileSt.size;
+      //创建一个对象保存信息 
+      var obj = new Object();
+      obj.size = fileSt.size;//文件大小，以字节为单位 
+      obj.path = path; //文件绝对路径 
+      filesList.push(obj);
     } else if( fileSt.isDirectory() ){
       readFile(path, filesList);
     }
@@ -25,18 +30,18 @@ function geFileList(path) {
       let files = fs.readdirSync(path);//需要用到同步读取 
       files.forEach(walk);
       function walk(file) {
-          let states = fs.statSync(path + '/' + file);
+          let states = fs.statSync(path + '\\' + file);
           if (states.isDirectory()) {
-            readFile(path + '/' + file, filesList);
+            readFile(path + '\\' + file, filesList);
           } else {
             countFiles++;
             countSize += states.size;
             //创建一个对象保存信息 
-            // var obj = new Object();
-            // obj.size = states.size;//文件大小，以字节为单位 
-            // obj.name = file;//文件名 
-            // obj.path = path + '/' + file; //文件绝对路径 
-            // filesList.push(obj);
+            var obj = new Object();
+            obj.size = states.size;//文件大小，以字节为单位 
+            obj.name = file;//文件名 
+            obj.path = path + '\\' + file; //文件绝对路径 
+            filesList.push(obj);
           }
       }
     }
@@ -47,14 +52,16 @@ function geFileList(path) {
 function loopReadFile(pathList) {
   let staticCount = 0;
   let staticFileCount = 0;
+  let fileObj = [];
   
   pathList.forEach(ele => {
     let countObj = geFileList(ele.path);
     staticCount += countObj.countSize;
     staticFileCount += countObj.countFiles;
+    fileObj = fileObj.concat(countObj.filesList);
   });
 
-  return { staticCount, staticFileCount };
+  return { staticCount, staticFileCount, fileObj };
 }
 
 export default loopReadFile;

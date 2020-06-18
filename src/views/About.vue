@@ -1,9 +1,9 @@
 <template>
   <div class="home">
-    <h3 style="text-align: center;margin-bottom: 50px;">文件拷贝</h3>
-    <div>是否保留原文件的目录结构：
-      <el-radio v-model="originBin" :label="true">是</el-radio>
-      <el-radio v-model="originBin" :label="false">否</el-radio>
+    <h3 style="text-align: center;">文件拷贝</h3>
+    <div style="margin: 10px 0 30px 0;">只复制文件夹下的文件：
+      <el-radio v-model="originBin" :label="true">不包括子文件夹</el-radio>
+      <el-radio v-model="originBin" :label="false">包括子文件夹</el-radio>
     </div>
     <form id="formData">
       <el-row>
@@ -18,7 +18,7 @@
           </p>
 
           <div style="text-align: left;">
-            <h4 style="padding-left: 7px;">已选的文件:{{ sourceSize }} 个</h4>
+            <h4 style="padding-left: 7px;">已选的文件:{{ source.length }} 个</h4>
             <div class="dyolege">
               <p
                 v-for="(item, index) in source"
@@ -44,8 +44,19 @@
                 :key="item.path"
                 >
                 <span>{{ item.path }}</span>
-                <el-progress style="width: 200px;display: inline-block;margin: 0 10px;" :text-inside="true" :stroke-width="26" :percentage="item.progress"></el-progress>
-                <i class="el-icon-delete" @click="deleteItem(index)"></i>
+                <el-button
+                  v-if="startCopyFlag"
+                  :type="item.startCopy ? 'warning' : 'success'"
+                  round size="mini"
+                  :icon="item.startCopy ? 'el-icon-loading' : 'el-icon-check'"
+                  style="margin: 0 0 0 15px;">{{ item.startCopy ? `拷贝中...` : '拷贝完成'}}</el-button>
+                <!-- <el-progress
+                  style="width: 200px;display: inline-block;margin: 0 10px;"
+                  :text-inside="true"
+                  :stroke-width="26"
+                  :percentage="item.progress">
+                </el-progress> -->
+                <i v-else class="el-icon-delete" style="margin-left: 15px;" @click="deleteItem(index)"></i>
               </p>
             </div>
           </div>
@@ -73,6 +84,8 @@ import HelloWorld from '@/components/HelloWorld.vue'
 import copyFile from './copy.js';
 import countSize from './count.js';
 import child_process from 'child_process';
+import os from 'os';
+
 
 export default {
   name: 'Home',
@@ -81,12 +94,15 @@ export default {
   },
   data() {
     return {
-      originBin: true,
+      originBin: false,
       source: [],
       targetPathList: [],
       copyErrorPathList: [],
-      sourceSize: 0,
+      startCopyFlag: false,
     }
+  },
+  mounted() {
+    console.log('文件加模式');
   },
   methods: {
     reset() {
@@ -94,6 +110,7 @@ export default {
       this.source = [];
       this.targetPathList = [];
       this.copyErrorPathList = [];
+      this.startCopyFlag = false;
     },
     deleteItem(index) {
       this.targetPathList.splice(index, 1);
@@ -103,23 +120,24 @@ export default {
     },
     targetChange() {
       let targetPath = document.getElementById('target').files[0];
-      this.targetPathList.push({
+      if(!targetPath) return;
+
+      let isPass = this.targetPathList.find(item => targetPath.path === item.path);
+      !isPass && this.targetPathList.push({
         path: targetPath.path,
         progress: 0,
         nums: 0,
+        startCopy: false,
       });
-      let list = new Set(this.targetPathList);
-      this.targetPathList = [...list];
     },
     folderChange() {
       let sourceFolder = document.getElementById('source-folder').files[0];
       if(!sourceFolder) return;
-      this.source.push({
+      let isPass = this.source.find(item => sourceFolder.path === item.path);
+      !isPass && this.source.push({
         type: 'folder',
         path: sourceFolder.path,
       });
-      let list = new Set(this.source);
-      this.source = [...list];
     },
     fileChange() {
       let sourceFile = document.getElementById('source-file').files;
@@ -136,65 +154,34 @@ export default {
     },
     async start() {
       let sourceLen = this.source.length;
+      
+      let commandType = '';
+      // window系统
+      if (os.type() == 'Windows_NT') {
+        commandType = 'Xcopy /Y /C';
+        if(!this.originBin) commandType = commandType + ' /S'
+      } else if (os.type() == 'Darwin') {
+        // linux系统
+        commandType = 'cp -r -f';
+      }
 
+      this.startCopyFlag = true;
       this.targetPathList.forEach(item => {
+        item.startCopy = true;
         this.source.forEach(ele => {
-          let command = `cp -r -f ${ele.path} ${item.path}`;
-          // console.log('command: ', command);
+          let command = `${commandType} "${ele.path}" "${item.path}"`;
           child_process.exec(command, {}, (e) => {
             console.log('e: ', e);
             if(!e) {
               ++item.nums;
               item.progress = (item.nums / sourceLen).toFixed(1) * 100;
+              if(item.nums === sourceLen) item.startCopy = false;
               console.log('item.progress: ', item.progress);
             }
           })
         });
       })
-    
-
-      // let self = this;
-      // if(this.targetPathList.length <= 0) {
-      //   return this.$message.error('你还未选择资源文件夹');
-      // }
-      
-      // if(this.targetPathList.length <= 0) {
-      //   return this.$message.error('你还未选择目标文件夹');
-      // }
-      
-      // this.sourceSize = countSize(this.source).staticFileCount;
-      // let startTime = +new Date();
-
-      // for(let i = 0; i < this.targetPathList.length; i++) {
-      //   await self.copyFileHandler(this.targetPathList[i]);
-      // }
-
-      // console.log('用时：', +new Date() - startTime)
-
-      // // this.targetPathList.forEach(async item => {
-      // //     console.log(1111);
-      // //     await self.copyFileHandler(item);
-      // // });
-
-      // function splicePath(path) {
-      //   return path.split('/')[1];
-      // }
     },
-    copyFileHandler(item) {
-      let self = this;
-      return new Promise((resolve, reject) => {
-        copyFile(
-          this.source,
-          item.path,
-          0,
-          (progress) => {
-            item.progress = (progress / self.sourceSize).toFixed(1) * 100;
-            if(progress === self.sourceSize) resolve();
-          },
-          reject,
-        );
-      });
-    }
   },
 }
 </script>
@@ -203,6 +190,11 @@ export default {
 .home {
   width: 900px;
   margin: 0 auto;
+}
+
+#formData {
+  border-top: 1px solid #ddd;
+  padding-top: 30px;
 }
 
 .fileType {
